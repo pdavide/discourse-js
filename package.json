@@ -1,0 +1,68 @@
+{
+  "name": "discourse-client",
+  "version": "0.0.1",
+  "description": "Javascript client for Discourse",
+  "browser": "lib/discourse-client.js",
+  "main": "src/discourse.js",
+  "module": "src/discourse.js",
+  "scripts": {
+    "serve": "webpack-dev-server --color --progress",
+    "build": "webpack --env dev && webpack --env build --profile --json > webpack-stats.json && npm run test",
+    "dev": "webpack --progress --colors --watch --env dev",
+    "test": "jest --detectOpenHandles --no-cache",
+    "test:watch": "jest --watchAll",
+    "test:cover": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pdavide/discourse-js.git"
+  },
+  "keywords": [
+    "discourse",
+    "discourse api",
+    "discourse js",
+    "discourse javascript",
+    "discourse client"
+  ],
+  "author": "Davide Porrovecchio",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/pdavide/discourse-js/issues"
+  },
+  "files": [
+    "lib/*.js"
+  ],
+  "homepage": "https://github.com/pdavide/discourse-js",
+  "devDependencies": {
+    "@babel/cli": "^7.2.0",
+    "@babel/core": "^7.2.2",
+    "@babel/plugin-proposal-throw-expressions": "^7.2.0",
+    "@babel/plugin-syntax-dynamic-import": "^7.2.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.2.0",
+    "@babel/polyfill": "^7.2.5",
+    "@babel/preset-env": "^7.2.0",
+    "@babel/register": "^7.0.0",
+    "@ungap/url-search-params": "^0.1.2",
+    "axios": "^0.18.0",
+    "axios-extensions": "^3.0.5",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-eslint": "^8.0.3",
+    "babel-loader": "^8.0.0-beta.4",
+    "babel-plugin-dynamic-import-node": "^2.2.0",
+    "babel-plugin-istanbul": "^5.1.0",
+    "eslint": "^5.11.1",
+    "eslint-loader": "^2.0.0",
+    "jest": "^23.6.0",
+    "jest-localstorage-mock": "^2.3.0",
+    "jest-mock-axios": "^2.1.11",
+    "jsencrypt": "^3.0.0-rc.1",
+    "mobile-detect": "^1.4.3",
+    "node-forge": "^0.7.6",
+    "promise-window": "^1.2.1",
+    "uglifyjs-webpack-plugin": "^1.2.7",
+    "webpack": "^4.28.3",
+    "webpack-cli": "^3.2.0",
+    "webpack-dev-server": "^3.1.14",
+    "yargs": "^10.0.3"
+  }
+}
