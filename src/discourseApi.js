@@ -104,8 +104,10 @@ export default class DiscourseApi {
     return await this._getCallResult('/u/' + username + '.json?stats=false', 'user.user_fields');
   }
 
-  async getFirstPublicUserField(username) {
-    return await this._getCallResult('/u/' + username + '.json?stats=false', 'user.user_fields.1');
+  async getPublicUserField(username, field) {
+    const userFields = await this.getPublicUserFields(username);
+
+    return userFields && userFields[field];
   }
 
   async postMessage(topicId, message) {
