@@ -73,7 +73,7 @@ export default class DiscourseAuth {
       this.km.decryptPayload(url.get('payload')).then(payloadObject => {
         payloadObject.nonce === this._getStoredRandom('nonce') ||
           throw new Error('The returned payload is invalid.');
-        payloadObject.api === 3 ||
+        payloadObject.api === 4 ||
           throw new Error('Wrong API version: ' + payloadObject.api + '. Discourse-js works with API version 3.');
         localStorage.setItem('user_api_key', payloadObject.key);
         this._removeStoredRandom('nonce');

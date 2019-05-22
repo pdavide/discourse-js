@@ -1,13 +1,13 @@
 import DiscourseAuth from './discourseAuth';
-import DiscourseApi from './discourseApi';
+import DiscourseClient from './discourseClient';
 import PromiseWindow from 'promise-window';
 
-export default class DiscourseClient {
+export default class Discourse {
   constructor(options) {
     this._requireOptions(options);
     this.options = this._formatOptions(options);
     this.auth = new DiscourseAuth(this.options);
-    this.api = new DiscourseApi(this.options.apiBaseUrl);
+    this.client = new DiscourseClient(this.options.apiBaseUrl);
   }
 
   async init() {
@@ -38,60 +38,6 @@ export default class DiscourseClient {
     return this.options.apiBaseUrl;
   }
 
-  async isLoggedIn() {
-    if (!this.auth._hasUserApiKey()) {
-      return false;
-    }
-
-    try {
-      await this._refreshCurrentUser();
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  getCurrentUser() {
-    return JSON.parse(localStorage.getItem('currentUser'));
-  }
-
-  getCurrentUserName() {
-    return this.getCurrentUser()['username'];
-  }
-
-  getCurrentUserDisplayName() {
-    return this.getCurrentUser()['name'];
-  }
-
-  isCurrentUserSilenced() {
-    return !this.getCurrentUser()['can_create_topic'];
-  }
-
-  getCurrentUserAvatarUrl(size) {
-    return [
-      this.options.apiBaseUrl,
-      this.getCurrentUser()['avatar_template'].replace('{size}', (size || 110))
-    ].join('/');
-  }
-
-  getCurrentUserNotificationsUrl() {
-    return [
-      this.options.apiBaseUrl,
-      'u',
-      this.getCurrentUserName(),
-      'notifications'
-    ].join('/');
-  }
-
-  async _refreshCurrentUser() {
-    try {
-      localStorage.setItem('currentUser', JSON.stringify(await this.api.getCurrentSessionUser()));
-    } catch (error) {
-      await this.logout();
-      throw new Error('Not logged in.');
-    }
-  }
-
   async login() {
     if (await this.isLoggedIn()) {
       return;
@@ -102,7 +48,7 @@ export default class DiscourseClient {
       height: 650,
       originRegexp: new RegExp('^' + location.origin)
     }).then(async data => {
-      await this.api._setUserApiKey(data.result.key);
+      await this.client._setUserApiKey(data.result.key);
       await this._refreshCurrentUser();
     },
 
@@ -122,8 +68,155 @@ export default class DiscourseClient {
   }
 
   async logout() {
-    await this.api.logout(this.getCurrentUserName());
+    await this.client._doLogout(this.getCurrentUserName());
     this.auth._clearAuthData();
     dispatchEvent(new Event('discourseLoggedOut'));
   }
+
+  async getCurrentSessionUser() {
+    return await this.client._getCallResult('/session/current.json', 'current_user', true);
+  }
+
+  async isLoggedIn() {
+    if (!this.auth._hasUserApiKey()) {
+      return false;
+    }
+
+    try {
+      await this._refreshCurrentUser();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  getCurrentUser() {
+    return JSON.parse(localStorage.getItem('currentUser'));
+  }
+
+  getCurrentUserName() {
+    return this.getCurrentUser() && this.getCurrentUser()['username'];
+  }
+
+  getCurrentUserId() {
+    return this.getCurrentUser() && this.getCurrentUser()['id'];
+  }
+
+  getCurrentUserDisplayName() {
+    return this.getCurrentUser() && this.getCurrentUser()['name'];
+  }
+
+  isCurrentUserSilenced() {
+    return this.getCurrentUser() && !this.getCurrentUser()['can_create_topic'];
+  }
+
+  getCurrentUserAvatarUrl(size) {
+    return this.getCurrentUser() && [
+      this.options.apiBaseUrl,
+      this.getCurrentUser()['avatar_template'].replace('{size}', (size || 110))
+    ].join('/');
+  }
+
+  getCurrentUserNotificationsUrl() {
+    return this.getCurrentUser() && [
+      this.options.apiBaseUrl,
+      'u',
+      this.getCurrentUserName(),
+      'notifications'
+    ].join('/');
+  }
+
+  async _refreshCurrentUser() {
+    try {
+      localStorage.setItem('currentUser', JSON.stringify(await this.getCurrentSessionUser()));
+    } catch (error) {
+      await this.logout();
+      throw new Error('Not logged in.');
+    }
+  }
+
+  async getLatestPosts(descending) {
+    let posts;
+
+    try {
+      posts = await this.client._getCallResult('/posts.json', 'latest_posts');
+    } catch (error) {
+      throw new Error(error);
+    }
+
+    if (descending) {
+      posts = posts.reverse();
+    }
+
+    return posts.filter(post => post.post_type === 1);
+  }
+
+  async getPostsInTopic(topicId, descending, nocache = false) {
+    let posts = await this.client._getCallResult('/t/' + topicId + '/posts.json?include_raw=true',
+      'post_stream.posts', nocache);
+
+    if (descending) {
+      posts = posts.reverse();
+    }
+
+    return posts.filter(post => post.post_type === 1);
+  }
+
+  async getTopic(topicId, descending, nocache = false) {
+    let topic = await this.client._getCallResult('/t/' + topicId + '.json?include_raw=true', false, nocache);
+
+    topic.post_stream.posts = topic.post_stream.posts.filter(post => post.post_type === 1);
+
+    if (descending) {
+      topic.post_stream.posts = topic.post_stream.posts.reverse();
+    }
+
+    return topic;
+  }
+
+  async getPublicUserFields(username) {
+    return await this.client._getCallResult('/u/' + username + '.json?stats=false', 'user.user_fields');
+  }
+
+  async getPublicUserField(username, field) {
+    const userFields = await this.getPublicUserFields(username);
+
+    return userFields && userFields[field];
+  }
+
+  async postMessage(topicId, message) {
+    this.client._checkUserApiKey();
+    return await this.client._postCallResult('/posts.json', {
+      /* eslint-disable camelcase */
+      topic_id: topicId,
+      raw: message
+      /* eslint-enable camelcase */
+    }).then(response => {
+      response.hidden && Promise.reject(response.hidden_reason_id);
+      return response;
+    }).catch(error => Promise.reject(error.response.data.errors));
+  }
+
+  async likePost(postId) {
+    this.client._checkUserApiKey();
+    return await this.client._postCallResult('/post_actions', {
+      /* eslint-disable camelcase */
+      id: postId,
+      post_action_type_id: 2
+      /* eslint-enable camelcase */
+    }).then(response => response).catch(error => Promise.reject(error.response.data.errors));
+  }
+
+  async undoLikePost(postId) {
+    this.client._checkUserApiKey();
+    return (await this.client.instance.delete('/post_actions/' + postId, {
+      data: {
+        /* eslint-disable camelcase */
+        post_action_type_id: '2'
+        /* eslint-enable camelcase */
+      }
+    })).data;
+  }
 }
+
+window.Discourse = Discourse;
