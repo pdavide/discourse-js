@@ -16,7 +16,7 @@ if (env === 'build') {
 } else {
   mode = 'development';
   outputFile = libraryName + '.js';
-  sourcemap = 'inline-source-map'
+  sourcemap = 'inline-source-map';
 }
 
 const config = {
