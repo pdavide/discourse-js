@@ -1,4 +1,4 @@
-import DiscourseClient from '../src/discourse.js';
+import Discourse from '../src/discourse.js';
 import mockForge from 'node-forge';
 
 let client;
@@ -21,7 +21,7 @@ jest.mock('axios', () => {
             common: []
           }
         }
-      }
+      };
     },
     defaults: {
       adapter: undefined,
@@ -29,12 +29,12 @@ jest.mock('axios', () => {
         common: []
       }
     }
-  }
+  };
 });
 
 describe('Given an instance of Discourse client', () => {
   beforeAll(() => {
-    client = new DiscourseClient({
+    client = new Discourse({
       appName: 'App name',
       apiBaseUrl: 'https://example.com',
       scopes: ['write']
