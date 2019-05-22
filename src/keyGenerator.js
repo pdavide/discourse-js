@@ -1,3 +1,4 @@
+import authManager from './authManager';
 let forge = require('./vendor/forge-pki');
 
 export default (() => {
@@ -13,8 +14,8 @@ export default (() => {
             private: forge.pki.privateKeyToPem(generatedKeypair.privateKey, 72).replace(/\r/g, '')
           };
 
-          localStorage.setItem(appId + '_publicKey', keypair.public);
-          localStorage.setItem(appId + '_privateKey', keypair.private);
+          authManager.setAppProp(appId, 'publicKey', keypair.public);
+          authManager.setAppProp(appId, 'privateKey', keypair.private);
           resolve(keypair);
         })() : reject(error);
       });

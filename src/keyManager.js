@@ -1,3 +1,5 @@
+import authManager from './authManager';
+
 export default class KeyManager {
   constructor(appId) {
     this.appId = appId;
@@ -21,8 +23,8 @@ export default class KeyManager {
   }
 
   readKeysFromStorage() {
-    const publicKey = localStorage.getItem(this.appId + '_publicKey');
-    const privateKey = localStorage.getItem(this.appId + '_privateKey');
+    const publicKey = authManager.getAppProp(this.appId, 'publicKey');
+    const privateKey = authManager.getAppProp(this.appId, 'privateKey');
 
     return (publicKey && privateKey) ?
       {

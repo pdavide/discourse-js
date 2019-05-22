@@ -1,21 +1,17 @@
 import KeyManager from './keyManager';
+import authManager from './authManager';
 import URLSearchParams from '@ungap/url-search-params'; // polyfill
 // import MobileDetect from 'mobile-detect';
 
 export default class DiscourseAuth {
   constructor(options) {
-    this.appId = this._slugify(options.appName);
-    this.km = new KeyManager(this.appId);
+    this.km = new KeyManager(options.appId);
     this.options = options;
   }
 
   async init() {
     await this.km.getKeys();
-    this._hasUserApiKey() || this._managePayload();
-  }
-
-  _hasUserApiKey() {
-    return localStorage.getItem('user_api_key') !== null;
+    authManager.hasUserApiKey() || this._managePayload();
   }
 
   async _getLoginUrl() {
@@ -24,7 +20,7 @@ export default class DiscourseAuth {
       application_name: this.options.appName,
       public_key: await this.km.getPublicKey(),
       nonce: this._generateStoredRandom('nonce'),
-      client_id: this._getStoredRandom('clientId') || this._generateStoredRandom('clientId'),
+      client_id: authManager.getAppProp(this.options.appId, 'clientId') || this._generateStoredRandom('clientId'),
       auth_redirect: location.href,
       scopes: this.options.scopes
       /* eslint-enable camelcase */
@@ -42,28 +38,8 @@ export default class DiscourseAuth {
   _generateStoredRandom(name) {
     const storedRandom = Math.random().toString(16).substr(2);
 
-    localStorage.setItem(this.appId + '_' + name, storedRandom);
+    authManager.setAppProp(this.options.appId, name, storedRandom);
     return storedRandom;
-  }
-
-  _getStoredRandom(name) {
-    const storedRandom = localStorage.getItem(this.appId + '_' + name);
-
-    return storedRandom;
-  }
-
-  _removeStoredRandom(name) {
-    localStorage.removeItem(this.appId + '_' + name);
-  }
-
-  _getUserApiKey() {
-    return localStorage.getItem('user_api_key');
-  }
-
-  _clearAuthData() {
-    localStorage.removeItem('user_api_key');
-    localStorage.removeItem('currentUser');
-    this._removeStoredRandom('clientId');
   }
 
   _managePayload() {
@@ -71,24 +47,15 @@ export default class DiscourseAuth {
 
     if (url.has('payload') && opener) {
       this.km.decryptPayload(url.get('payload')).then(payloadObject => {
-        payloadObject.nonce === this._getStoredRandom('nonce') ||
+        payloadObject.nonce === authManager.getAppProp(this.options.appId, 'nonce') ||
           throw new Error('The returned payload is invalid.');
         payloadObject.api === 4 ||
           throw new Error('Wrong API version: ' + payloadObject.api + '. Discourse-js works with API version 3.');
-        localStorage.setItem('user_api_key', payloadObject.key);
-        this._removeStoredRandom('nonce');
+        authManager.setUserApiKey(payloadObject.key);
+        authManager.removeAppProp(this.options.appId, 'nonce');
         opener.postMessage({ result: payloadObject }, location.origin);
       });
     }
     // var md = new MobileDetect(window.navigator.userAgent);
-  }
-
-  _slugify(text) {
-    return text.toString().toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^\w\-]+/g, '')
-      .replace(/\-\-+/g, '-')
-      .replace(/^-+/, '')
-      .replace(/-+$/, '');
   }
 }

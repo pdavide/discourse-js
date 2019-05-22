@@ -1,5 +1,6 @@
 import DiscourseAuth from './discourseAuth';
 import DiscourseClient from './discourseClient';
+import authManager from './authManager';
 import PromiseWindow from 'promise-window';
 
 export default class Discourse {
@@ -7,11 +8,11 @@ export default class Discourse {
     this._requireOptions(options);
     this.options = this._formatOptions(options);
     this.auth = new DiscourseAuth(this.options);
-    this.client = new DiscourseClient(this.options.apiBaseUrl);
+    this.client = new DiscourseClient(this.options);
   }
 
   async init() {
-    await this.auth.init();
+    await Promise.all([this.auth.init(), this.client.init()]);
   }
 
   _requireOptions(options) {
@@ -29,9 +30,19 @@ export default class Discourse {
     const formattedOptions = { ...options };
 
     // remove trailing slash
+    formattedOptions.appId = this._slugify(options.appName);
     formattedOptions.apiBaseUrl = options.apiBaseUrl.replace(/\/$/, '');
     formattedOptions.scopes = options.scopes.join(',');
     return formattedOptions;
+  }
+
+  _slugify(text) {
+    return text.toString().toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]+/g, '')
+      .replace(/\-\-+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
   }
 
   getApiBaseUrl() {
@@ -69,7 +80,7 @@ export default class Discourse {
 
   async logout() {
     await this.client._doLogout(this.getCurrentUserName());
-    this.auth._clearAuthData();
+    authManager.clearAuthData(this.options.appId);
     dispatchEvent(new Event('discourseLoggedOut'));
   }
 
@@ -78,7 +89,7 @@ export default class Discourse {
   }
 
   async isLoggedIn() {
-    if (!this.auth._hasUserApiKey()) {
+    if (!authManager.hasUserApiKey()) {
       return false;
     }
 
@@ -91,7 +102,7 @@ export default class Discourse {
   }
 
   getCurrentUser() {
-    return JSON.parse(localStorage.getItem('currentUser'));
+    return authManager.getCurrentUser();
   }
 
   getCurrentUserName() {
@@ -128,7 +139,7 @@ export default class Discourse {
 
   async _refreshCurrentUser() {
     try {
-      localStorage.setItem('currentUser', JSON.stringify(await this.getCurrentSessionUser()));
+      authManager.setCurrentUser(await this.getCurrentSessionUser());
     } catch (error) {
       await this.logout();
       throw new Error('Not logged in.');

@@ -1,11 +1,12 @@
+import authManager from './authManager';
 import axios from 'axios';
 import { cacheAdapterEnhancer, throttleAdapterEnhancer } from 'axios-extensions';
 
 export default class DiscourseClient {
-  constructor(apiBaseUrl) {
-    this.apiBaseUrl = apiBaseUrl;
+  constructor(options) {
+    this.options = options;
     this.instance = axios.create({
-      baseURL: this.apiBaseUrl,
+      baseURL: options.apiBaseUrl,
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Cache-Control': 'no-cache',
@@ -16,8 +17,10 @@ export default class DiscourseClient {
         { threshold: 500 } // 120 reqs/min
       )
     });
+  }
 
-    this._setUserApiKey(localStorage.getItem('user_api_key'));
+  async init() {
+    await this._setUserApiKey(authManager.getUserApiKey());
   }
 
   async _getCallResult(endpoint, prop, nocache = false) {
@@ -45,8 +48,14 @@ export default class DiscourseClient {
     if (!userApiKey) {
       return;
     }
-    this.instance.defaults.headers.common['User-Api-Key'] = userApiKey;
-    await this._setCsrfToken();
+
+    try {
+      this.instance.defaults.headers.common['User-Api-Key'] = userApiKey;
+      await this._setCsrfToken();
+    } catch (error) {
+      authManager.clearAuthData(this.options.appId);
+      delete this.instance.defaults.headers.common['User-Api-Key'];
+    }
   }
 
   async _setCsrfToken() {
