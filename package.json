@@ -43,7 +43,7 @@
     "@babel/preset-env": "^7.4.4",
     "@babel/register": "^7.4.4",
     "@ungap/url-search-params": "^0.1.2",
-    "axios": "^0.18.0",
+    "axios": "^0.19.0",
     "axios-extensions": "^3.0.5",
     "babel-core": "^7.0.0-bridge.0",
     "babel-eslint": "^8.0.3",
